@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(os.getenv("MEHRVPN1_ROOT", "/opt/mehrvpn1"))
 DATA = Path(os.getenv("MEHRVPN1_DATA", "/var/lib/mehrvpn1"))
+DB_PATH = Path(os.getenv("MEHRVPN1_DB", str(DATA / "mehrvpn1.db")))
 CLIENT_DIR = DATA / "clients"
 SOCKET_PATH = Path(os.getenv("MEHRVPN1_SOCKET", "/run/mehrvpn1/agent.sock"))
 SESSION_TTL = int(os.getenv("MEHRVPN1_SESSION_TTL", "43200"))
