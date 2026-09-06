@@ -1,16 +1,21 @@
 [Unit]
-Description=MehrVPN1 Web
+Description=MehrVPN1 Web Panel
 After=network.target mehrvpn1-agent.service
+Requires=mehrvpn1-agent.service
+
 [Service]
 User=mehrvpn
 Group=mehrvpn
 WorkingDirectory=/opt/mehrvpn1
-Environment=MEHRVPN_DATA_DIR=/var/lib/mehrvpn1
-ExecStart=/opt/mehrvpn1/.venv/bin/uvicorn panel.app:app --uds /run/mehrvpn1/web.sock
+EnvironmentFile=-/etc/mehrvpn1.env
+ExecStart=/opt/mehrvpn1/.venv/bin/uvicorn panel.app:app --host 127.0.0.1 --port 8000
 Restart=on-failure
+RestartSec=3
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
+ProtectHome=true
 ReadWritePaths=/var/lib/mehrvpn1 /run/mehrvpn1
+
 [Install]
 WantedBy=multi-user.target
