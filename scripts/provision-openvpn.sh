@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 IFS=$'\n\t'
-
 VPN_REMOTE="${VPN_REMOTE:-${1:-}}"
 VPN_PORT="${VPN_PORT:-1194}"
 VPN_NET="${VPN_NET:-10.8.0.0 255.255.255.0}"
 PKI=/etc/openvpn/easy-rsa
 SERVER=/etc/openvpn/server
 EASYRSA=/usr/share/easy-rsa/easyrsa
-
 [[ $EUID -eq 0 ]] || { echo 'run as root' >&2; exit 1; }
 [[ -x "$EASYRSA" ]] || { echo 'easy-rsa is not installed' >&2; exit 1; }
 [[ -n "$VPN_REMOTE" ]] || VPN_REMOTE="$(curl -4fsS --max-time 10 https://api.ipify.org || true)"
 [[ -n "$VPN_REMOTE" ]] || { echo 'cannot determine public IPv4; set VPN_REMOTE=...' >&2; exit 1; }
-
 install -d -m 0755 "$PKI" "$SERVER"
 if [[ ! -f "$PKI/pki/ca.crt" ]]; then
   cd "$PKI"
@@ -72,6 +69,12 @@ WAN_IF="$(ip -4 route show default | awk 'NR==1{print $5}')"
 iptables -t nat -C POSTROUTING -s 10.8.0.0/24 -o "$WAN_IF" -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o "$WAN_IF" -j MASQUERADE
 iptables -C FORWARD -s 10.8.0.0/24 -o "$WAN_IF" -j ACCEPT 2>/dev/null || iptables -A FORWARD -s 10.8.0.0/24 -o "$WAN_IF" -j ACCEPT
 iptables -C FORWARD -d 10.8.0.0/24 -m conntrack --ctstate RELATED,ESTABLISHED -i "$WAN_IF" -j ACCEPT 2>/dev/null || iptables -A FORWARD -d 10.8.0.0/24 -m conntrack --ctstate RELATED,ESTABLISHED -i "$WAN_IF" -j ACCEPT
+if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q '^Status: active'; then
+  ufw allow "${VPN_PORT}/udp" >/dev/null
+  ufw allow 80/tcp >/dev/null
+  ufw allow 443/tcp >/dev/null
+fi
+if command -v netfilter-persistent >/dev/null 2>&1; then netfilter-persistent save >/dev/null; fi
 systemctl enable --now openvpn-server@server.service
 systemctl restart openvpn-server@server.service
 systemctl is-active --quiet openvpn-server@server.service
