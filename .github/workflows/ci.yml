@@ -11,4 +11,4 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: python -m compileall -q panel
       - run: bash -n install.sh scripts/provision-openvpn.sh
-      - run: pytest -q
+      - run: PYTHONPATH=. pytest -q
