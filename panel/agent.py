@@ -76,9 +76,10 @@ def revoke_client(name):
 def status():
     active = subprocess.run(["/bin/systemctl", "is-active", SERVICE], capture_output=True, text=True).stdout.strip()
     enabled = subprocess.run(["/bin/systemctl", "is-enabled", SERVICE], capture_output=True, text=True).stdout.strip()
-    status_file = OPENVPN_DIR / "status.log"
+    candidates = [Path("/run/openvpn/server.status"), OPENVPN_DIR / "status.log"]
+    status_file = next((p for p in candidates if p.exists()), None)
     clients = []
-    if status_file.exists():
+    if status_file:
         for line in status_file.read_text(errors="replace").splitlines():
             if line.startswith("CLIENT_LIST,"):
                 parts = line.split(",")
@@ -100,21 +101,13 @@ def serve():
     while True:
         c, _ = s.accept()
         try:
-            raw = c.recv(8192)
-            q = json.loads(raw)
+            q = json.loads(c.recv(8192))
             action = q.get("action")
-            if action == "openvpn-status":
-                out = {"ok": True, "data": status()}
-            elif action == "openvpn-restart":
-                _run(["/bin/systemctl", "restart", SERVICE], timeout=60)
-                out = {"ok": True}
-            elif action == "client-create":
-                out = {"ok": True, "profile": create_client(q.get("name", ""))}
-            elif action == "client-revoke":
-                revoke_client(q.get("name", ""))
-                out = {"ok": True}
-            else:
-                raise ValueError("unsupported action")
+            if action == "openvpn-status": out = {"ok": True, "data": status()}
+            elif action == "openvpn-restart": _run(["/bin/systemctl", "restart", SERVICE], timeout=60); out = {"ok": True}
+            elif action == "client-create": out = {"ok": True, "profile": create_client(q.get("name", ""))}
+            elif action == "client-revoke": revoke_client(q.get("name", "")); out = {"ok": True}
+            else: raise ValueError("unsupported action")
         except Exception as e:
             out = {"ok": False, "error": str(e)}
         c.sendall(json.dumps(out).encode())
