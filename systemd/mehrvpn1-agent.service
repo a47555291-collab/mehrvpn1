@@ -1,13 +1,18 @@
 [Unit]
-Description=MehrVPN1 Privileged Agent
-After=network.target
+Description=MehrVPN1 Privileged OpenVPN Agent
+After=network.target openvpn-server@server.service
+Requires=openvpn-server@server.service
+
 [Service]
 Type=simple
 User=root
 Group=mehrvpn
+EnvironmentFile=-/etc/mehrvpn1.env
 ExecStart=/opt/mehrvpn1/.venv/bin/python -m panel.agent
 Restart=on-failure
+RestartSec=3
 PrivateTmp=true
 ProtectHome=true
+
 [Install]
 WantedBy=multi-user.target
